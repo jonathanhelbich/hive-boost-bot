@@ -13,8 +13,7 @@ function main() {
   logger.info('========================================');
   logger.info('  Hive Boost Bot v1.0.0');
   logger.info(`  Cuenta: ${config.bot.username}`);
-  logger.info(`  Paquetes: ${config.packages.map(p => `${p.name}(${p.amount}H/${p.votePercent}%)`).join(', ')}`);
-  logger.info(`  Multiplicador: ${config.boost.multiplier}x`);
+  logger.info(`  Precio dinámico: ${config.boost.baseAmount} HIVE = ${config.boost.baseVotePercent}% de voto (máx ${config.boost.maxVotePercent}%)`);
   logger.info('========================================');
 
   const app = createServer();

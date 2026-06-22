@@ -3,7 +3,7 @@ const cors = require('cors');
 const path = require('path');
 const config = require('../core/config');
 const db = require('../core/database');
-const { getVotingMana } = require('../core/voter');
+const { getVotingMana, getQueueState } = require('../core/voter');
 const logger = require('../core/logger');
 
 function createServer() {
@@ -14,8 +14,11 @@ function createServer() {
 
   app.get('/api/packages', (req, res) => {
     res.json({
-      packages: config.packages,
-      multiplier: config.boost.multiplier,
+      dynamic: true,
+      baseAmount: config.boost.baseAmount,
+      baseVotePercent: config.boost.baseVotePercent,
+      minVotePercent: config.boost.minVotePercent,
+      maxVotePercent: config.boost.maxVotePercent,
       botAccount: config.bot.username,
     });
   });
@@ -25,9 +28,12 @@ function createServer() {
       const mana = await getVotingMana();
       const todayVotes = await db.getTodayVotes();
       const boosts = await db.getAllBoosts(10);
+      const regenHours = Math.max(0, (100 - mana) / 20);
+      const regenMinutes = Math.round(regenHours * 60);
       res.json({
         botAccount: config.bot.username,
         votingMana: mana.toFixed(1),
+        manaRegenMinutes: regenMinutes,
         todayVotes,
         maxVotesPerDay: config.boost.maxVotesPerDay,
         totalBoosts: boosts.length,
@@ -45,6 +51,15 @@ function createServer() {
       logger.error(`Error en /api/stats: ${err.message}`);
       res.status(500).json({ error: 'Error interno' });
     }
+  });
+
+  app.get('/api/queue', (req, res) => {
+    const queue = getQueueState();
+    res.json({
+      queueLength: queue.length,
+      isProcessing: require('../core/voter').isProcessing(),
+      queue,
+    });
   });
 
   app.get('/api/boosts/:username', async (req, res) => {

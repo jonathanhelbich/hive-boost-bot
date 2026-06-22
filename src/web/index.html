@@ -34,23 +34,6 @@
       margin-bottom: 1.5rem;
     }
     .card h2 { margin-bottom: 1rem; color: #f0f6fc; }
-    .packages { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1rem 0; }
-    .package {
-      background: #0d1117;
-      border: 1px solid #30363d;
-      border-radius: 8px;
-      padding: 1.25rem;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .package:hover { border-color: #58a6ff; transform: translateY(-2px); }
-    .package.selected { border-color: #00d2ff; box-shadow: 0 0 10px rgba(0,210,255,0.2); }
-    .package h3 { font-size: 1.25rem; color: #f0f6fc; }
-    .package .price { font-size: 2rem; font-weight: bold; color: #58a6ff; margin: 0.5rem 0; }
-    .package .price span { font-size: 1rem; color: #8b949e; }
-    .package .vote-info { color: #8b949e; font-size: 0.9rem; }
-    .package .est-value { color: #3fb950; font-weight: bold; margin-top: 0.5rem; }
     .form-group { margin-bottom: 1rem; }
     .form-group label { display: block; margin-bottom: 0.5rem; color: #c9d1d9; }
     .form-group input {
@@ -119,7 +102,8 @@
     .status-pending { background: #1f2937; color: #f59e0b; }
     .status-voted { background: #1f3a2f; color: #3fb950; }
     .status-failed { background: #3a1f1f; color: #f85149; }
-    .tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+    .status-processing { background: #1f2937; color: #58a6ff; }
+    .tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
     .tab {
       padding: 0.5rem 1rem;
       background: #0d1117;
@@ -127,19 +111,72 @@
       border-radius: 6px;
       cursor: pointer;
       color: #8b949e;
+      transition: all 0.2s;
     }
+    .tab:hover { border-color: #58a6ff; color: #c9d1d9; }
     .tab.active { background: #1f2937; border-color: #58a6ff; color: #f0f6fc; }
     .tab-content { display: none; }
     .tab-content.active { display: block; }
     footer { text-align: center; padding: 2rem; color: #8b949e; font-size: 0.85rem; }
     .success-msg { color: #3fb950; font-weight: bold; margin-top: 0.5rem; }
     .error-msg { color: #f85149; font-weight: bold; margin-top: 0.5rem; }
+    .calc-result {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-top: 1rem;
+      text-align: center;
+    }
+    .calc-result .percent {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #58a6ff;
+    }
+    .calc-result .detail { color: #8b949e; margin-top: 0.25rem; }
+    .feature-list { list-style: none; }
+    .feature-list li {
+      padding: 0.75rem 0;
+      border-bottom: 1px solid #21262d;
+      line-height: 1.5;
+    }
+    .feature-list li:last-child { border-bottom: none; }
+    .feature-list li strong { color: #58a6ff; }
+    .highlight { color: #00d2ff; font-weight: bold; }
+    .mana-bar {
+      height: 24px;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      overflow: hidden;
+      margin: 0.5rem 0;
+    }
+    .mana-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+      border-radius: 12px;
+      transition: width 1s ease;
+    }
+    .queue-empty {
+      text-align: center;
+      padding: 2rem;
+      color: #8b949e;
+    }
+    .queue-empty .big { font-size: 3rem; margin-bottom: 0.5rem; }
+    .countdown {
+      font-family: monospace;
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #f59e0b;
+    }
+    .countdown.ready { color: #3fb950; }
+    .countdown-now { color: #58a6ff; }
   </style>
 </head>
 <body>
   <div class="header">
     <h1>Hive Boost Bot</h1>
-    <p>Potencia tus posts en Hive &mdash; paga y recibe votos al instante</p>
+    <p>Potencia tus posts en Hive &mdash; pagas y recibes votos al instante</p>
   </div>
 
   <div class="container">
@@ -166,15 +203,26 @@
     </div>
 
     <div class="tabs">
-      <div class="tab active" onclick="switchTab('boost')">Boost</div>
+      <div class="tab active" onclick="switchTab('boost')">Solicitar Boost</div>
+      <div class="tab" onclick="switchTab('live')">Estado en vivo</div>
+      <div class="tab" onclick="switchTab('howto')">Cómo funciona</div>
       <div class="tab" onclick="switchTab('history')">Historial</div>
       <div class="tab" onclick="switchTab('status')">Verificar</div>
     </div>
 
     <div class="tab-content active" id="tab-boost">
       <div class="card">
-        <h2>Selecciona un paquete</h2>
-        <div class="packages" id="packagesContainer"></div>
+        <h2>Calculá tu voto</h2>
+        <div class="form-group">
+          <label>¿Cuánto HIVE vas a enviar?</label>
+          <input type="number" id="amountInput" placeholder="1" min="0.1" step="0.1" value="1" />
+        </div>
+        <div id="calcPreview">
+          <div class="calc-result">
+            <div class="percent" id="votePercentDisplay">50%</div>
+            <div class="detail">de voto &mdash; <span id="estValueDisplay">~0.75 HIVE</span> en valor estimado</div>
+          </div>
+        </div>
       </div>
 
       <div class="card">
@@ -187,10 +235,10 @@
           <div class="instructions">
             <p style="margin-bottom:0.75rem;font-weight:bold;">Instrucciones:</p>
             <ol>
-              <li>Selecciona un paquete arriba</li>
-              <li>Ingresa la URL de tu post</li>
-              <li>Envía el monto exacto a la cuenta del bot con el memo indicado</li>
-              <li>Recibirás el voto en menos de 5 minutos</li>
+              <li>Ingresá el monto que querés enviar</li>
+              <li>Ingresá la URL de tu post</li>
+              <li>Envíá el monto a la cuenta del bot con el memo indicado</li>
+              <li>Recibís el voto en menos de 5 minutos</li>
             </ol>
           </div>
         </div>
@@ -202,9 +250,72 @@
             <p>Memo (click para copiar):</p>
             <div class="memo-box" id="memoText" onclick="copyMemo()">-</div>
             <p style="font-size:0.85rem;color:#8b949e;margin-top:0.5rem;">El bot detectará el pago automáticamente y votará tu post.</p>
+            <button class="btn" id="sendBtn" onclick="sendPayment()" style="margin-top:1rem;background:linear-gradient(90deg,#3fb950,#2ea043);">
+              Enviar con Hive Keychain
+            </button>
             <div id="paymentStatus"></div>
+            <p id="keychainFallback" style="display:none;font-size:0.85rem;color:#8b949e;margin-top:0.75rem;text-align:center;">
+              ¿No tenés Hive Keychain? <a href="#" id="hiveWalletLink" style="color:#58a6ff;" target="_blank">Abrir en Hive Wallet</a>
+            </p>
           </div>
         </div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-live">
+      <div class="card">
+        <h2>Mana del Bot</h2>
+        <div style="display:flex;justify-content:space-between;margin-bottom:0.25rem;">
+          <span style="color:#8b949e;">Voting Mana</span>
+          <span style="color:#58a6ff;font-weight:bold;" id="liveManaText">0%</span>
+        </div>
+        <div class="mana-bar">
+          <div class="mana-bar-fill" id="liveManaBar" style="width:0%;"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:0.85rem;color:#8b949e;">
+          <span>Regeneración completa en: <strong style="color:#f59e0b;" id="liveRegenTime">-</strong></span>
+          <span>Votos hoy: <strong id="liveDailyVotes">0/200</strong></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Cola de votos <span id="queueLengthBadge" style="font-size:0.85rem;color:#8b949e;font-weight:normal;"></span></h2>
+        <div id="queueContainer">
+          <div class="queue-empty">
+            <div class="big">✓</div>
+            <p>No hay votos en cola</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Últimos votos emitidos</h2>
+        <div id="liveHistory">
+          <p style="color:#8b949e;">Cargando...</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-howto">
+      <div class="card">
+        <h2>Cómo funciona</h2>
+        <ul class="feature-list">
+          <li><strong>Precio dinámico</strong> &mdash; No hay paquetes fijos. Enviás lo que quieras y recibís un voto proporcional.</li>
+          <li><strong>Cálculo simple</strong> &mdash; Por cada <span class="highlight" id="howtoBaseAmount">1 HIVE</span> recibís un <span class="highlight" id="howtoBasePercent">50%</span> de voto. Si enviás más, el porcentaje sube hasta <span class="highlight" id="howtoMaxPercent">100%</span>.</li>
+          <li><strong>Sin paquetes, sin complicaciones</strong> &mdash; Solo ingresás la URL de tu post, el monto, y el bot genera el memo automáticamente.</li>
+          <li><strong>Proceso automático</strong> &mdash; Enviás la transferencia a la cuenta del bot con el memo indicado y el voto se ejecuta en minutos.</li>
+          <li><strong>Transparencia total</strong> &mdash; Podés ver el estado en vivo del bot y verificar tu boost.</li>
+          <li><strong>Hecho para la comunidad</strong> &mdash; Cualquier usuario de Hive puede potenciar sus posts al instante.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h2>Ejemplos</h2>
+        <ul class="feature-list">
+          <li>📌 Enviás <strong>0.5 HIVE</strong> → recibís <strong id="example1">25%</strong> de voto</li>
+          <li>📌 Enviás <strong>1 HIVE</strong> → recibís <strong id="example2">50%</strong> de voto</li>
+          <li>📌 Enviás <strong>1.5 HIVE</strong> → recibís <strong id="example3">75%</strong> de voto</li>
+          <li>📌 Enviás <strong>2 HIVE</strong> → recibís <strong id="example4">100%</strong> de voto</li>
+        </ul>
       </div>
     </div>
 
@@ -235,48 +346,69 @@
   </footer>
 
   <script>
-    let selectedPackage = null;
-    let packages = [];
+    let baseAmount = 1;
+    let baseVotePercent = 50;
+    let minVotePercent = 1;
+    let maxVotePercent = 100;
+    let liveInterval = null;
     const API = '';
 
     async function loadPackages() {
       try {
         const res = await fetch(API + '/api/packages');
         const data = await res.json();
-        packages = data.packages;
+        baseAmount = data.baseAmount || 1;
+        baseVotePercent = data.baseVotePercent || 50;
+        minVotePercent = data.minVotePercent || 1;
+        maxVotePercent = data.maxVotePercent || 100;
         document.getElementById('memoAccount').textContent = data.botAccount;
-        renderPackages();
         loadStats();
+        updateHowTo();
+        updateCalc();
       } catch (err) {
-        document.getElementById('packagesContainer').innerHTML =
-          '<p style="color:#f85149;">Error cargando paquetes</p>';
+        console.error('Error loading config:', err);
       }
     }
 
-    function renderPackages() {
-      const container = document.getElementById('packagesContainer');
-      container.innerHTML = packages.map((p, i) => `
-        <div class="package ${i === 0 ? 'selected' : ''}" onclick="selectPackage(${i})">
-          <h3>${p.name.charAt(0).toUpperCase() + p.name.slice(1)}</h3>
-          <div class="price">${p.amount} <span>HIVE</span></div>
-          <div class="vote-info">Voto de ${p.voteWeight}%</div>
-          <div class="est-value">~${(p.amount * 1.5).toFixed(2)} HIVE en votos</div>
-        </div>
-      `).join('');
-      if (packages.length > 0) selectedPackage = packages[0];
+    function updateHowTo() {
+      document.getElementById('howtoBaseAmount').textContent = baseAmount + ' HIVE';
+      document.getElementById('howtoBasePercent').textContent = baseVotePercent + '%';
+      document.getElementById('howtoMaxPercent').textContent = maxVotePercent + '%';
+      document.getElementById('example1').textContent = calcPercent(0.5) + '%';
+      document.getElementById('example2').textContent = calcPercent(1) + '%';
+      document.getElementById('example3').textContent = calcPercent(1.5) + '%';
+      document.getElementById('example4').textContent = calcPercent(2) + '%';
     }
 
-    function selectPackage(index) {
-      selectedPackage = packages[index];
-      document.querySelectorAll('.package').forEach((el, i) => {
-        el.classList.toggle('selected', i === index);
-      });
-      document.getElementById('memoArea').style.display = 'none';
-      document.getElementById('instructionsArea').style.display = 'block';
+    function calcPercent(amount) {
+      if (!amount || amount <= 0) return 0;
+      const raw = (amount / baseAmount) * baseVotePercent;
+      return Math.round(Math.min(Math.max(raw, minVotePercent), maxVotePercent));
     }
+
+    function calcEstValue(amount) {
+      const pct = calcPercent(amount);
+      return ((pct / 100) * amount * 1.5).toFixed(2);
+    }
+
+    function updateCalc() {
+      const amount = parseFloat(document.getElementById('amountInput').value) || 0;
+      const pct = calcPercent(amount);
+      const est = calcEstValue(amount);
+      document.getElementById('votePercentDisplay').textContent = pct + '%';
+      document.getElementById('estValueDisplay').textContent = '~' + est + ' HIVE en valor estimado';
+    }
+
+    document.getElementById('amountInput').addEventListener('input', function() {
+      updateCalc();
+      const url = document.getElementById('postUrl').value.trim();
+      if (url && parsePostUrl(url)) {
+        generateMemo();
+      }
+    });
 
     document.getElementById('postUrl').addEventListener('input', function() {
-      if (this.value.trim() && selectedPackage) {
+      if (this.value.trim() && document.getElementById('amountInput').value) {
         generateMemo();
       } else {
         document.getElementById('memoArea').style.display = 'none';
@@ -286,15 +418,17 @@
 
     function generateMemo() {
       const url = document.getElementById('postUrl').value.trim();
+      const amount = parseFloat(document.getElementById('amountInput').value) || 0;
       const parsed = parsePostUrl(url);
-      if (!parsed || !selectedPackage) {
+      if (!parsed || amount <= 0) {
         document.getElementById('memoArea').style.display = 'none';
         document.getElementById('instructionsArea').style.display = 'block';
         return;
       }
-      const memo = `${selectedPackage.name} @${parsed.author} ${parsed.permlink}`;
+      const memo = `@${parsed.author} ${parsed.permlink}`;
+      const pct = calcPercent(amount);
       document.getElementById('memoText').textContent = memo;
-      document.getElementById('memoAmount').textContent = `${selectedPackage.amount} HIVE`;
+      document.getElementById('memoAmount').textContent = `${amount} HIVE → ${pct}% de voto`;
       document.getElementById('instructionsArea').style.display = 'none';
       document.getElementById('memoArea').style.display = 'block';
     }
@@ -316,9 +450,48 @@
       const memo = document.getElementById('memoText');
       navigator.clipboard.writeText(memo.textContent).then(() => {
         const status = document.getElementById('paymentStatus');
-        status.innerHTML = '<span class="success-msg">Memo copiado. Envía el pago en Hive Keychain o tu wallet.</span>';
+        status.innerHTML = '<span class="success-msg">Memo copiado.</span>';
         setTimeout(() => { status.innerHTML = ''; }, 5000);
       }).catch(() => {});
+    }
+
+    function sendPayment() {
+      const memo = document.getElementById('memoText').textContent;
+      const amountText = document.getElementById('memoAmount').textContent;
+      const account = document.getElementById('memoAccount').textContent;
+      const amount = amountText.split(' ')[0];
+
+      if (typeof window.hive_keychain !== 'undefined') {
+        const status = document.getElementById('paymentStatus');
+        status.innerHTML = '<span style="color:#f59e0b;">Solicitando transferencia en Hive Keychain...</span>';
+
+        window.hive_keychain.requestTransfer(
+          null,
+          account,
+          parseFloat(amount).toFixed(3),
+          memo,
+          'transfer',
+          (response) => {
+            if (response.success) {
+              status.innerHTML = '<span class="success-msg">✓ Transferencia enviada! El bot votará en minutos.</span>';
+            } else {
+              status.innerHTML = '<span class="error-msg">Error: ' + (response.message || 'transacción rechazada') + '</span>';
+            }
+          }
+        );
+      } else {
+        document.getElementById('keychainFallback').style.display = 'block';
+        document.getElementById('hiveWalletLink').href = generateHiveWalletUrl(account, amount, memo);
+        document.getElementById('paymentStatus').innerHTML =
+          '<span style="color:#f59e0b;">Hive Keychain no está instalado.</span>';
+      }
+    }
+
+    function generateHiveWalletUrl(to, amount, memo) {
+      return 'https://hive.blog/@' + to +
+        '?transfer=' + encodeURIComponent(to) +
+        '&amount=' + encodeURIComponent(parseFloat(amount).toFixed(3) + ' HIVE') +
+        '&memo=' + encodeURIComponent(memo);
     }
 
     async function loadStats() {
@@ -329,7 +502,6 @@
         document.getElementById('votingMana').textContent = data.votingMana;
         document.getElementById('todayVotes').textContent = `${data.todayVotes}/${data.maxVotesPerDay}`;
         document.getElementById('totalBoosts').textContent = data.totalBoosts;
-        // Update history
         const historyList = document.getElementById('historyList');
         if (data.recentBoosts && data.recentBoosts.length > 0) {
           historyList.innerHTML = data.recentBoosts.map(b => `
@@ -347,6 +519,110 @@
         }
       } catch (err) {}
       setTimeout(loadStats, 15000);
+    }
+
+    async function loadLiveData() {
+      try {
+        const [statsRes, queueRes] = await Promise.all([
+          fetch(API + '/api/stats'),
+          fetch(API + '/api/queue'),
+        ]);
+        const stats = await statsRes.json();
+        const queue = await queueRes.json();
+
+        const mana = parseFloat(stats.votingMana);
+        document.getElementById('liveManaText').textContent = mana.toFixed(1) + '%';
+        document.getElementById('liveManaBar').style.width = mana + '%';
+
+        const regenMin = stats.manaRegenMinutes || 0;
+        if (regenMin > 0) {
+          const h = Math.floor(regenMin / 60);
+          const m = regenMin % 60;
+          document.getElementById('liveRegenTime').textContent = h > 0 ? `${h}h ${m}m` : `${m}m`;
+        } else {
+          document.getElementById('liveRegenTime').textContent = 'Completo';
+        }
+
+        document.getElementById('liveDailyVotes').textContent = `${stats.todayVotes}/${stats.maxVotesPerDay}`;
+
+        const badge = document.getElementById('queueLengthBadge');
+        const container = document.getElementById('queueContainer');
+
+        if (queue.queueLength > 0) {
+          badge.textContent = `(${queue.queueLength} en cola)`;
+          let html = '';
+          queue.queue.forEach((item, idx) => {
+            const secs = Math.max(0, item.estimatedSeconds - idx * 3);
+            const isProcessing = idx === 0;
+            html += `
+              <div class="history-item">
+                <div>
+                  <strong>@${item.author}</strong>
+                  <span style="color:#8b949e;font-size:0.85rem;">/${item.permlink.slice(0,30)}</span>
+                  <div style="font-size:0.8rem;color:#8b949e;">Boost #${item.id} • ${item.votePercent}% de voto</div>
+                </div>
+                <span style="text-align:right;">
+                  <div class="countdown ${isProcessing ? 'countdown-now' : ''}" data-seconds="${secs}" data-idx="${idx}">
+                    ${isProcessing ? 'PROCESANDO' : formatCountdown(secs)}
+                  </div>
+                  <div style="font-size:0.75rem;color:#8b949e;">${isProcessing ? 'ahora' : 'estimado'}</div>
+                </span>
+              </div>`;
+          });
+          container.innerHTML = html;
+        } else {
+          badge.textContent = '';
+          container.innerHTML = `
+            <div class="queue-empty">
+              <div class="big">✓</div>
+              <p>No hay votos en cola &mdash; el bot está al día</p>
+            </div>`;
+        }
+
+        if (stats.recentBoosts && stats.recentBoosts.length > 0) {
+          const liveHistory = document.getElementById('liveHistory');
+          liveHistory.innerHTML = stats.recentBoosts.slice(0, 5).map(b => `
+            <div class="history-item">
+              <div>
+                <strong>@${b.author}</strong>
+                <span style="color:#8b949e;font-size:0.85rem;">/${b.permlink.slice(0,30)}...</span>
+                <div style="font-size:0.8rem;color:#8b949e;">${b.amount} HIVE</div>
+              </div>
+              <span class="status-badge status-${b.status}">${b.status}</span>
+            </div>
+          `).join('');
+        }
+      } catch (err) {}
+    }
+
+    function formatCountdown(secs) {
+      if (secs <= 0) return 'AHORA';
+      if (secs < 60) return `${secs}s`;
+      const m = Math.floor(secs / 60);
+      const s = secs % 60;
+      return `${m}m ${s}s`;
+    }
+
+    function startLiveUpdates() {
+      if (liveInterval) clearInterval(liveInterval);
+      loadLiveData();
+      liveInterval = setInterval(loadLiveData, 2000);
+
+      setInterval(() => {
+        document.querySelectorAll('.countdown:not(.countdown-now):not(.countdown.ready)').forEach(el => {
+          let secs = parseInt(el.dataset.seconds);
+          if (secs > 0) {
+            secs--;
+            el.dataset.seconds = secs;
+            el.textContent = formatCountdown(secs);
+            if (secs <= 5) {
+              el.classList.add('ready');
+            }
+          } else {
+            el.textContent = 'AHORA';
+          }
+        });
+      }, 1000);
     }
 
     async function searchBoosts() {
@@ -380,6 +656,13 @@
       document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
       document.querySelector(`.tab[onclick*="${tab}"]`).classList.add('active');
       document.getElementById(`tab-${tab}`).classList.add('active');
+
+      if (tab === 'live') {
+        startLiveUpdates();
+      } else if (liveInterval) {
+        clearInterval(liveInterval);
+        liveInterval = null;
+      }
     }
 
     loadPackages();

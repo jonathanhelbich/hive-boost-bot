@@ -71,25 +71,23 @@ async function handleTransfer(transfer, txId, onTransfer) {
   const amountNum = parseFloat(amount.split(' ')[0]);
   const currency = amount.split(' ')[1];
 
-  const boostPackage = config.packages.find(p => p.name === parsed.packageName);
-  if (!boostPackage) {
-    logger.warn(`Paquete inválido "${parsed.packageName}" de ${from}`);
-    return;
-  }
+  const { baseAmount, baseVotePercent, minVotePercent, maxVotePercent } = config.boost;
+  const rawPercent = (amountNum / baseAmount) * baseVotePercent;
+  const voteWeight = Math.round(Math.min(Math.max(rawPercent, minVotePercent), maxVotePercent));
 
-  if (amountNum < boostPackage.amount) {
-    logger.warn(`Monto insuficiente de ${from}: ${amountNum} < ${boostPackage.amount}`);
+  if (amountNum < 0.1) {
+    logger.warn(`Monto muy bajo de ${from}: ${amountNum}`);
     return;
   }
 
   const user = await db.getOrCreateUser(from);
-  const voteWeight = boostPackage.voteWeight;
+  const packageName = 'dinamico';
 
   const boost = await db.createBoost({
     userId: user.id,
     author: parsed.author,
     permlink: parsed.permlink,
-    packageName: parsed.packageName,
+    packageName,
     amountPaid: amountNum,
     currency,
     voteWeight,
@@ -103,33 +101,23 @@ async function handleTransfer(transfer, txId, onTransfer) {
 
 function parseMemo(memo) {
   memo = memo.trim();
-  let packageName = 'basico';
   let author, permlink;
 
-  const parts = memo.split(/\s+/);
-  if (parts.length === 1) {
-    const parsed = parsePostUrl(parts[0]);
-    if (!parsed) return null;
+  const parsed = parsePostUrl(memo);
+  if (parsed) {
     author = parsed.author;
     permlink = parsed.permlink;
-  } else if (parts.length === 2) {
-    packageName = parts[0].toLowerCase();
-    const parsed = parsePostUrl(parts[1]);
-    if (!parsed) return null;
-    author = parsed.author;
-    permlink = parsed.permlink;
-  } else if (parts.length >= 3) {
-    packageName = parts[0].toLowerCase();
-    author = parts[1].replace('@', '');
-    permlink = parts[2];
   } else {
-    return null;
+    const parts = memo.split(/\s+/);
+    if (parts.length >= 2) {
+      author = parts[0].replace('@', '');
+      permlink = parts[1];
+    } else {
+      return null;
+    }
   }
 
-  const validPackage = config.packages.find(p => p.name === packageName);
-  if (!validPackage) return null;
-
-  return { packageName, author, permlink };
+  return { author, permlink };
 }
 
 function parsePostUrl(url) {

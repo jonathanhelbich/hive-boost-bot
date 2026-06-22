@@ -119,8 +119,19 @@ async function getVotingMana() {
   }
 }
 
+function getQueueState() {
+  return VOTE_QUEUE.map((b, i) => ({
+    position: i,
+    id: b.id,
+    author: b.author,
+    permlink: b.permlink,
+    votePercent: b.vote_weight,
+    estimatedSeconds: i * 3 + 5,
+  }));
+}
+
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-module.exports = { queueVote, getVotingMana };
+module.exports = { queueVote, getVotingMana, getQueueState, isProcessing: () => isProcessing };

@@ -1,0 +1,20 @@
+{
+  "name": "hive-boost-bot",
+  "version": "1.0.0",
+  "description": "Hive Boost Bot - Pay-per-boost voting service",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "init-db": "node src/core/database.js"
+  },
+  "dependencies": {
+    "@hiveio/dhive": "^1.2.6",
+    "sql.js": "^1.10.0",
+    "express": "^4.21.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "node-cron": "^3.0.3",
+    "winston": "^3.14.0"
+  }
+}

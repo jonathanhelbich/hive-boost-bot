@@ -249,33 +249,20 @@
           <label>Pega el link de tu post en Hive:</label>
           <input type="text" id="postUrl" placeholder="https://hive.blog/@usuario/permlink-de-tu-post" />
         </div>
-        <div id="instructionsArea">
-          <div class="instructions">
-            <p style="margin-bottom:0.75rem;font-weight:bold;">Instrucciones:</p>
-            <ol>
-              <li>Ingresá el monto que querés enviar</li>
-              <li>Ingresá la URL de tu post</li>
-              <li>Envíá el monto a la cuenta del bot con el memo indicado</li>
-              <li>Recibís el voto en menos de 5 minutos</li>
-            </ol>
-          </div>
-        </div>
-        <div id="memoArea" style="display:none;">
-          <div class="instructions">
-            <p style="margin-bottom:0.75rem;font-weight:bold;">Envía el pago con estos datos:</p>
-            <p>Cuenta: <strong style="color:#58a6ff;" id="memoAccount">-</strong></p>
-            <p>Monto: <strong style="color:#58a6ff;" id="memoAmount">-</strong></p>
-            <p>Memo (click para copiar):</p>
-            <div class="memo-box" id="memoText" onclick="copyMemo()">-</div>
-            <p style="font-size:0.85rem;color:#8b949e;margin-top:0.5rem;">El bot detectará el pago automáticamente y votará tu post.</p>
-            <button class="btn" id="sendBtn" onclick="sendPayment()" style="margin-top:1rem;background:linear-gradient(90deg,#3fb950,#2ea043);">
-              Enviar con Hive Keychain
-            </button>
-            <div id="paymentStatus"></div>
-            <p id="keychainFallback" style="display:none;font-size:0.85rem;color:#8b949e;margin-top:0.75rem;text-align:center;">
-              ¿No tenés Hive Keychain? <a href="#" id="hiveWalletLink" style="color:#58a6ff;" target="_blank">Abrir en Hive Wallet</a>
-            </p>
-          </div>
+        <button class="btn" id="sendBtn" onclick="sendPayment()" style="background:linear-gradient(90deg,#3fb950,#2ea043);margin-bottom:1rem;">
+          Enviar con Hive Keychain
+        </button>
+        <div id="paymentStatus"></div>
+        <div class="instructions" id="memoArea" style="display:none;">
+          <p style="margin-bottom:0.75rem;font-weight:bold;">Envía el pago con estos datos:</p>
+          <p>Cuenta: <strong style="color:#58a6ff;" id="memoAccount">-</strong></p>
+          <p>Monto: <strong style="color:#58a6ff;" id="memoAmount">-</strong></p>
+          <p>Memo (click para copiar):</p>
+          <div class="memo-box" id="memoText" onclick="copyMemo()">-</div>
+          <p style="font-size:0.85rem;color:#8b949e;margin-top:0.5rem;">El bot detectará el pago automáticamente y votará tu post.</p>
+          <p id="keychainFallback" style="display:none;font-size:0.85rem;color:#8b949e;margin-top:0.75rem;text-align:center;">
+            ¿No tenés Hive Keychain? <a href="#" id="hiveWalletLink" style="color:#58a6ff;" target="_blank">Abrir en Hive Wallet</a>
+          </p>
         </div>
       </div>
     </div>
@@ -403,9 +390,6 @@
     document.getElementById('postUrl').addEventListener('input', function() {
       if (this.value.trim() && document.getElementById('amountInput').value) {
         generateMemo();
-      } else {
-        document.getElementById('memoArea').style.display = 'none';
-        document.getElementById('instructionsArea').style.display = 'block';
       }
     });
 
@@ -415,22 +399,21 @@
       const parsed = parsePostUrl(url);
       if (!parsed || amount <= 0) {
         document.getElementById('memoArea').style.display = 'none';
-        document.getElementById('instructionsArea').style.display = 'block';
         return;
       }
       const memo = `@${parsed.author} ${parsed.permlink}`;
       const pct = calcPercent(amount);
       document.getElementById('memoText').textContent = memo;
       document.getElementById('memoAmount').textContent = `${amount} HIVE → ${pct}% de voto`;
-      document.getElementById('instructionsArea').style.display = 'none';
       document.getElementById('memoArea').style.display = 'block';
     }
 
     function parsePostUrl(url) {
+      url = url.trim();
       const patterns = [
-        /hive\.blog\/(?:@)?(\w+)\/([\w-]+)/,
-        /peakd\.com\/(?:\w+\/)?@?(\w+)\/([\w-]+)/,
-        /ecency\.com\/(?:\w+\/)?@?(\w+)\/([\w-]+)/,
+        /(?:hive\.blog|peakd\.com|ecency\.com|hivebuzz\.com)\/(?:\w+\/)?@?(\w+)\/([\w-]+)/,
+        /\/(?:@)?(\w+)\/([\w-]+)/,
+        /^@?(\w+)\s+([\w-]+)$/,
       ];
       for (const p of patterns) {
         const m = url.match(p);
@@ -441,6 +424,7 @@
 
     function copyMemo() {
       const memo = document.getElementById('memoText');
+      if (memo.textContent === '-' || !memo.textContent) return;
       navigator.clipboard.writeText(memo.textContent).then(() => {
         const status = document.getElementById('paymentStatus');
         status.innerHTML = '<span class="success-msg">Memo copiado.</span>';
@@ -449,10 +433,28 @@
     }
 
     function sendPayment() {
-      const memo = document.getElementById('memoText').textContent;
-      const amountText = document.getElementById('memoAmount').textContent;
+      const url = document.getElementById('postUrl').value.trim();
+      const amountVal = parseFloat(document.getElementById('amountInput').value) || 0;
+      const parsed = parsePostUrl(url);
       const account = document.getElementById('memoAccount').textContent;
-      const amount = amountText.split(' ')[0];
+
+      if (!url || !parsed) {
+        document.getElementById('paymentStatus').innerHTML =
+          '<span class="error-msg">Primero ingresá la URL de tu post de Hive</span>';
+        return;
+      }
+      if (amountVal <= 0) {
+        document.getElementById('paymentStatus').innerHTML =
+          '<span class="error-msg">Ingresá un monto válido</span>';
+        return;
+      }
+
+      const memo = `@${parsed.author} ${parsed.permlink}`;
+      const amount = amountVal.toFixed(3);
+
+      document.getElementById('memoText').textContent = memo;
+      document.getElementById('memoAmount').textContent = `${amountVal} HIVE → ${calcPercent(amountVal)}% de voto`;
+      document.getElementById('memoArea').style.display = 'block';
 
       if (typeof window.hive_keychain !== 'undefined') {
         const status = document.getElementById('paymentStatus');
@@ -461,7 +463,7 @@
         window.hive_keychain.requestTransfer(
           null,
           account,
-          parseFloat(amount).toFixed(3),
+          amount,
           memo,
           'transfer',
           (response) => {

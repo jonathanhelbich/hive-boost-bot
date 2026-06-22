@@ -12,6 +12,10 @@ function createServer() {
   app.use(express.json());
   app.use(express.static(path.join(__dirname, '..', 'web')));
 
+  app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', time: Date.now() });
+  });
+
   app.get('/api/packages', (req, res) => {
     res.json({
       dynamic: true,

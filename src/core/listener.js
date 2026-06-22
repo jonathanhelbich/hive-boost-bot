@@ -121,12 +121,11 @@ function parseMemo(memo) {
 }
 
 function parsePostUrl(url) {
+  url = url.trim();
   const patterns = [
-    /hive\.blog\/(?:@)?(\w+)\/([\w-]+)/,
-    /peakd\.com\/(?:\w+\/)?@?(\w+)\/([\w-]+)/,
-    /ecency\.com\/(?:\w+\/)?@?(\w+)\/([\w-]+)/,
-    /hivebuzz\.com\/(?:\w+\/)?@?(\w+)\/([\w-]+)/,
+    /(?:hive\.blog|peakd\.com|ecency\.com|hivebuzz\.com)\/(?:\w+\/)?@?(\w+)\/([\w-]+)/,
     /\/(?:@)?(\w+)\/([\w-]+)/,
+    /^@?(\w+)\s+([\w-]+)$/,
   ];
   for (const pattern of patterns) {
     const match = url.match(pattern);

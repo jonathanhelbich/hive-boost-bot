@@ -17,8 +17,8 @@ function main() {
   logger.info('========================================');
 
   const app = createServer();
-  app.listen(config.server.port, () => {
-    logger.info(`Servidor web corriendo en puerto ${config.server.port}`);
+  app.listen(config.server.port, '0.0.0.0', () => {
+    logger.info(`Servidor web corriendo en http://0.0.0.0:${config.server.port}`);
   });
 
   startListener((boost) => {
@@ -27,6 +27,19 @@ function main() {
     logger.error(`Error fatal en listener: ${err.message}`);
     process.exit(1);
   });
+
+  const renderUrl = process.env.RENDER_EXTERNAL_URL;
+  if (renderUrl) {
+    const http = require('http');
+    setInterval(() => {
+      http.get(renderUrl + '/api/health', (res) => {
+        logger.debug(`Keepalive ping: ${res.statusCode}`);
+      }).on('error', (err) => {
+        logger.debug(`Keepalive error: ${err.message}`);
+      });
+    }, 10 * 60 * 1000);
+    logger.info(`Keepalive activo cada 10 min en ${renderUrl}`);
+  }
 }
 
 main();

@@ -18,7 +18,5 @@ services:
         value: "200"
       - key: MAX_VOTE_PERCENT
         value: "100"
-    disk:
-      name: data
-      mountPath: /opt/render/project/src/db
-      sizeGB: 1
+    healthCheckPath: /api/health
+

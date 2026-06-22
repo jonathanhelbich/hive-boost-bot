@@ -32,6 +32,10 @@ function createServer() {
       const mana = await getVotingMana();
       const todayVotes = await db.getTodayVotes();
       const boosts = await db.getAllBoosts(10);
+      const [totalHive, totalVotesCast] = await Promise.all([
+        db.getTotalHiveReceived(),
+        db.getTotalVotesCast(),
+      ]);
       const regenHours = Math.max(0, (100 - mana) / 20);
       const regenMinutes = Math.round(regenHours * 60);
       res.json({
@@ -41,6 +45,8 @@ function createServer() {
         todayVotes,
         maxVotesPerDay: config.boost.maxVotesPerDay,
         totalBoosts: boosts.length,
+        totalHiveReceived: totalHive,
+        totalVotesCast,
         recentBoosts: boosts.slice(0, 5).map(b => ({
           id: b.id,
           username: b.username,

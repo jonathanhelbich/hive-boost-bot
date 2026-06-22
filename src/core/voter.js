@@ -82,6 +82,12 @@ async function castVote(boost) {
     db.updateManaState(finalWeight, db.getTodayVotes() + 1);
 
     logger.info(`Votado #${boost.id}: @${boost.author}/${boost.permlink} (${finalWeight}%) - TX: ${result.id}`);
+
+    try {
+      await postComment(boost);
+    } catch (commentErr) {
+      logger.warn(`Error comentando #${boost.id}: ${commentErr.message}`);
+    }
   } catch (err) {
     if (err.message.includes('voting')) {
       logger.warn(`Error de voto #${boost.id}: ${err.message}. Re-encolando.`);
@@ -91,6 +97,37 @@ async function castVote(boost) {
       db.updateBoostStatus(boost.id, 'failed');
     }
   }
+}
+
+const COMMENTS = [
+  'Muy buen post 🙌. Si querés darle más visibilidad a tus próximos posts, pasá por https://hive-boost-bot.onrender.com',
+  'Está buenísimo el contenido. Por cierto, si te sirve, en hive-boost-bot.onrender.com podés potenciar tus posts con votos al instante.',
+  'Te quedó genial el post. 🚀 Acá tenés un boost de parte del bot, si querés repetir ya sabés: https://hive-boost-bot.onrender.com',
+  'Buen contenido 🙌. Pasá la voz: hay un bot en hive-boost-bot.onrender.com que da votos por transferencia, sin paquetes fijos.',
+  'Sumo un voto a tu post desde el bot. Si te copa la idea, entra a https://hive-boost-bot.onrender.com y potenciá tus próximos posts.',
+  'Buenardo el post. 🔥 Avísale a tus amigos: en hive-boost-bot.onrender.com pueden subir sus posts con votos dinámicos.',
+  'Te dejamos un voto. Si querés seguí potenciando tu contenido, pegate una vuelta por https://hive-boost-bot.onrender.com',
+  'Buen post 🙌. Acá va un apoyo del bot. Cualquier cosa, en hive-boost-bot.onrender.com podés conseguir más votos cuando quieras.',
+];
+
+async function postComment(boost) {
+  const text = COMMENTS[Math.floor(Math.random() * COMMENTS.length)];
+  const permlink = `re-${boost.author}-${boost.permlink}-${Math.floor(Date.now() / 1000)}`;
+  const commentOp = [
+    'comment',
+    {
+      parent_author: boost.author,
+      parent_permlink: boost.permlink,
+      author: config.bot.username,
+      permlink,
+      title: '',
+      body: text,
+      json_metadata: JSON.stringify({}),
+    },
+  ];
+  const key = PrivateKey.fromString(config.bot.postingKey);
+  await client.broadcast.sendOperations([commentOp], key);
+  logger.info(`Comentado en #${boost.id}: @${boost.author}/${boost.permlink}`);
 }
 
 async function getVotingMana() {

@@ -199,23 +199,23 @@
 
   <div class="container">
     <div class="card" id="statsCard">
-      <h2>Estado del Bot</h2>
+      <h2>Contadores públicos</h2>
       <div class="stats-grid">
         <div class="stat-item">
-          <div class="value" id="botName">-</div>
-          <div class="label">Cuenta</div>
+          <div class="value" style="color:#3fb950;" id="totalHiveReceived">0</div>
+          <div class="label">HIVE recibidos</div>
+        </div>
+        <div class="stat-item">
+          <div class="value" style="color:#f59e0b;" id="totalVotesCast">0</div>
+          <div class="label">Votos emitidos</div>
+        </div>
+        <div class="stat-item">
+          <div class="value" id="totalBoosts">0</div>
+          <div class="label">Boosts procesados</div>
         </div>
         <div class="stat-item">
           <div class="value" id="votingMana">-</div>
           <div class="label">Voting Mana (%)</div>
-        </div>
-        <div class="stat-item">
-          <div class="value" id="todayVotes">-</div>
-          <div class="label">Votos hoy</div>
-        </div>
-        <div class="stat-item">
-          <div class="value" id="totalBoosts">-</div>
-          <div class="label">Boosts totales</div>
         </div>
       </div>
     </div>
@@ -493,9 +493,9 @@
       try {
         const res = await fetch(API + '/api/stats');
         const data = await res.json();
-        document.getElementById('botName').textContent = data.botAccount;
-        document.getElementById('votingMana').textContent = data.votingMana;
-        document.getElementById('todayVotes').textContent = `${data.todayVotes}/${data.maxVotesPerDay}`;
+        document.getElementById('totalHiveReceived').textContent = (data.totalHiveReceived || 0) + ' HIVE';
+        document.getElementById('totalVotesCast').textContent = data.totalVotesCast || 0;
+        document.getElementById('votingMana').textContent = data.votingMana + '%';
         document.getElementById('totalBoosts').textContent = data.totalBoosts;
         const historyList = document.getElementById('historyList');
         if (data.recentBoosts && data.recentBoosts.length > 0) {
@@ -542,10 +542,11 @@
         const mana = parseFloat(stats.votingMana);
 
         let html = `
-          <div style="display:flex;justify-content:space-between;padding:0.5rem 0.75rem;background:#0d1117;border-bottom:1px solid #30363d;font-size:0.85rem;position:sticky;top:0;z-index:1;">
+          <div style="display:flex;justify-content:space-between;padding:0.5rem 0.75rem;background:#0d1117;border-bottom:1px solid #30363d;font-size:0.85rem;position:sticky;top:0;z-index:1;flex-wrap:wrap;gap:0.25rem;">
+            <span>💰 <strong style="color:#3fb950;">${stats.totalHiveReceived || 0} HIVE</strong></span>
+            <span>🗳️ <strong style="color:#f59e0b;">${stats.totalVotesCast || 0} votos</strong></span>
             <span>Mana: <strong style="color:${mana > 50 ? '#3fb950' : mana > 20 ? '#f59e0b' : '#f85149'}">${stats.votingMana}%</strong></span>
             <span>Hoy: <strong style="color:#58a6ff;">${stats.todayVotes}/${stats.maxVotesPerDay}</strong></span>
-            <span>Total: <strong style="color:#58a6ff;">${stats.totalBoosts}</strong></span>
           </div>`;
 
         boosts.forEach((b, i) => {

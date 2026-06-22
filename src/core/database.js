@@ -188,6 +188,24 @@ async function getAllBoosts(limit = 50) {
   return rowsToArray(rows[0]);
 }
 
+async function getTotalHiveReceived() {
+  const d = await getDb();
+  const rows = d.exec("SELECT COALESCE(SUM(amount_paid), 0) as total FROM boosts WHERE currency = 'HIVE'");
+  if (rows.length > 0 && rows[0].values.length > 0) {
+    return rows[0].values[0][0];
+  }
+  return 0;
+}
+
+async function getTotalVotesCast() {
+  const d = await getDb();
+  const rows = d.exec("SELECT COUNT(*) as total FROM votes_log");
+  if (rows.length > 0 && rows[0].values.length > 0) {
+    return rows[0].values[0][0];
+  }
+  return 0;
+}
+
 function rowToObj(meta, values) {
   if (!meta || !values) return null;
   const obj = {};
@@ -214,4 +232,6 @@ module.exports = {
   getTodayVotes,
   getUserBoosts,
   getAllBoosts,
+  getTotalHiveReceived,
+  getTotalVotesCast,
 };

@@ -171,6 +171,24 @@
     }
     .countdown.ready { color: #3fb950; }
     .countdown-now { color: #58a6ff; }
+    .feed-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem;
+      border-bottom: 1px solid #21262d;
+      animation: slideIn 0.3s ease-out;
+      transition: background 0.2s;
+    }
+    .feed-item:hover { background: #1c2128; }
+    .feed-item:first-child { border-top: 1px solid #21262d; }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .feed-time { font-size: 0.75rem; color: #8b949e; font-family: monospace; }
+    .feed-amount { color: #58a6ff; font-weight: bold; }
+    .feed-percent { color: #3fb950; }
   </style>
 </head>
 <body>
@@ -264,34 +282,9 @@
 
     <div class="tab-content" id="tab-live">
       <div class="card">
-        <h2>Mana del Bot</h2>
-        <div style="display:flex;justify-content:space-between;margin-bottom:0.25rem;">
-          <span style="color:#8b949e;">Voting Mana</span>
-          <span style="color:#58a6ff;font-weight:bold;" id="liveManaText">0%</span>
-        </div>
-        <div class="mana-bar">
-          <div class="mana-bar-fill" id="liveManaBar" style="width:0%;"></div>
-        </div>
-        <div style="display:flex;justify-content:space-between;font-size:0.85rem;color:#8b949e;">
-          <span>Regeneración completa en: <strong style="color:#f59e0b;" id="liveRegenTime">-</strong></span>
-          <span>Votos hoy: <strong id="liveDailyVotes">0/200</strong></span>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>Cola de votos <span id="queueLengthBadge" style="font-size:0.85rem;color:#8b949e;font-weight:normal;"></span></h2>
-        <div id="queueContainer">
-          <div class="queue-empty">
-            <div class="big">✓</div>
-            <p>No hay votos en cola</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>Últimos votos emitidos</h2>
-        <div id="liveHistory">
-          <p style="color:#8b949e;">Cargando...</p>
+        <h2>Feed en Vivo</h2>
+        <div id="liveFeedContainer" style="max-height:600px;overflow-y:auto;">
+          <p style="color:#8b949e;text-align:center;padding:2rem;">Cargando...</p>
         </div>
       </div>
     </div>
@@ -521,108 +514,70 @@
       setTimeout(loadStats, 15000);
     }
 
-    async function loadLiveData() {
+    let lastBoostId = 0;
+
+    async function loadLiveFeed() {
       try {
-        const [statsRes, queueRes] = await Promise.all([
+        const [boostsRes, statsRes] = await Promise.all([
+          fetch(API + '/api/boosts'),
           fetch(API + '/api/stats'),
-          fetch(API + '/api/queue'),
         ]);
+        const boostsData = await boostsRes.json();
         const stats = await statsRes.json();
-        const queue = await queueRes.json();
+
+        const boosts = (boostsData.boosts || []).slice(0, 30);
+        const container = document.getElementById('liveFeedContainer');
+
+        if (boosts.length === 0) {
+          container.innerHTML = '<p style="color:#8b949e;text-align:center;padding:2rem;">Aún no hay boosts</p>';
+          return;
+        }
+
+        const newMaxId = Math.max(...boosts.map(b => b.id));
+        const hasNew = newMaxId > lastBoostId;
+        lastBoostId = newMaxId;
 
         const mana = parseFloat(stats.votingMana);
-        document.getElementById('liveManaText').textContent = mana.toFixed(1) + '%';
-        document.getElementById('liveManaBar').style.width = mana + '%';
 
-        const regenMin = stats.manaRegenMinutes || 0;
-        if (regenMin > 0) {
-          const h = Math.floor(regenMin / 60);
-          const m = regenMin % 60;
-          document.getElementById('liveRegenTime').textContent = h > 0 ? `${h}h ${m}m` : `${m}m`;
-        } else {
-          document.getElementById('liveRegenTime').textContent = 'Completo';
-        }
+        let html = `
+          <div style="display:flex;justify-content:space-between;padding:0.5rem 0.75rem;background:#0d1117;border-bottom:1px solid #30363d;font-size:0.85rem;position:sticky;top:0;z-index:1;">
+            <span>Mana: <strong style="color:${mana > 50 ? '#3fb950' : mana > 20 ? '#f59e0b' : '#f85149'}">${stats.votingMana}%</strong></span>
+            <span>Hoy: <strong style="color:#58a6ff;">${stats.todayVotes}/${stats.maxVotesPerDay}</strong></span>
+            <span>Total: <strong style="color:#58a6ff;">${stats.totalBoosts}</strong></span>
+          </div>`;
 
-        document.getElementById('liveDailyVotes').textContent = `${stats.todayVotes}/${stats.maxVotesPerDay}`;
-
-        const badge = document.getElementById('queueLengthBadge');
-        const container = document.getElementById('queueContainer');
-
-        if (queue.queueLength > 0) {
-          badge.textContent = `(${queue.queueLength} en cola)`;
-          let html = '';
-          queue.queue.forEach((item, idx) => {
-            const secs = Math.max(0, item.estimatedSeconds - idx * 3);
-            const isProcessing = idx === 0;
-            html += `
-              <div class="history-item">
-                <div>
-                  <strong>@${item.author}</strong>
-                  <span style="color:#8b949e;font-size:0.85rem;">/${item.permlink.slice(0,30)}</span>
-                  <div style="font-size:0.8rem;color:#8b949e;">Boost #${item.id} • ${item.votePercent}% de voto</div>
+        boosts.forEach((b, i) => {
+          const isNew = i === 0 && hasNew;
+          const time = b.voted_at || b.created_at;
+          const timeStr = time ? new Date(time * 1000).toLocaleTimeString() : '';
+          html += `
+            <div class="feed-item" style="${isNew ? 'border-left:3px solid #58a6ff;' : ''}">
+              <div style="min-width:0;flex:1;">
+                <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+                  <strong style="color:#f0f6fc;">@${b.username || '?'}</strong>
+                  <span style="color:#8b949e;font-size:0.85rem;">→</span>
+                  <strong>@${b.author}</strong>
+                  <span style="color:#8b949e;font-size:0.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px;">/${(b.permlink || '').slice(0, 35)}</span>
                 </div>
-                <span style="text-align:right;">
-                  <div class="countdown ${isProcessing ? 'countdown-now' : ''}" data-seconds="${secs}" data-idx="${idx}">
-                    ${isProcessing ? 'PROCESANDO' : formatCountdown(secs)}
-                  </div>
-                  <div style="font-size:0.75rem;color:#8b949e;">${isProcessing ? 'ahora' : 'estimado'}</div>
-                </span>
-              </div>`;
-          });
-          container.innerHTML = html;
-        } else {
-          badge.textContent = '';
-          container.innerHTML = `
-            <div class="queue-empty">
-              <div class="big">✓</div>
-              <p>No hay votos en cola &mdash; el bot está al día</p>
-            </div>`;
-        }
-
-        if (stats.recentBoosts && stats.recentBoosts.length > 0) {
-          const liveHistory = document.getElementById('liveHistory');
-          liveHistory.innerHTML = stats.recentBoosts.slice(0, 5).map(b => `
-            <div class="history-item">
-              <div>
-                <strong>@${b.author}</strong>
-                <span style="color:#8b949e;font-size:0.85rem;">/${b.permlink.slice(0,30)}...</span>
-                <div style="font-size:0.8rem;color:#8b949e;">${b.amount} HIVE</div>
+                <div style="display:flex;gap:0.75rem;margin-top:0.25rem;flex-wrap:wrap;">
+                  <span class="feed-amount">${b.amount_paid || 0} ${b.currency || 'HIVE'}</span>
+                  <span class="feed-percent">${b.vote_weight || 0}% voto</span>
+                  <span class="feed-time">${timeStr}</span>
+                </div>
               </div>
-              <span class="status-badge status-${b.status}">${b.status}</span>
-            </div>
-          `).join('');
-        }
-      } catch (err) {}
-    }
+              <span class="status-badge status-${b.status || 'pending'}">${b.status || 'pending'}</span>
+            </div>`;
+        });
 
-    function formatCountdown(secs) {
-      if (secs <= 0) return 'AHORA';
-      if (secs < 60) return `${secs}s`;
-      const m = Math.floor(secs / 60);
-      const s = secs % 60;
-      return `${m}m ${s}s`;
+        container.innerHTML = html;
+        if (hasNew) container.scrollTop = 0;
+      } catch (err) {}
     }
 
     function startLiveUpdates() {
       if (liveInterval) clearInterval(liveInterval);
-      loadLiveData();
-      liveInterval = setInterval(loadLiveData, 2000);
-
-      setInterval(() => {
-        document.querySelectorAll('.countdown:not(.countdown-now):not(.countdown.ready)').forEach(el => {
-          let secs = parseInt(el.dataset.seconds);
-          if (secs > 0) {
-            secs--;
-            el.dataset.seconds = secs;
-            el.textContent = formatCountdown(secs);
-            if (secs <= 5) {
-              el.classList.add('ready');
-            }
-          } else {
-            el.textContent = 'AHORA';
-          }
-        });
-      }, 1000);
+      loadLiveFeed();
+      liveInterval = setInterval(loadLiveFeed, 3000);
     }
 
     async function searchBoosts() {
